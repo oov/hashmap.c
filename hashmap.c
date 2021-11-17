@@ -9,19 +9,6 @@
 #include <stddef.h>
 #include "hashmap.h"
 
-static void *(*_malloc)(size_t) = NULL;
-static void *(*_realloc)(void *, size_t) = NULL;
-static void (*_free)(void *) = NULL;
-
-// hashmap_set_allocator allows for configuring a custom allocator for
-// all hashmap library operations. This function, if needed, should be called
-// only once at startup and a prior to calling hashmap_new().
-void hashmap_set_allocator(void *(*malloc)(size_t), void (*free)(void*)) 
-{
-    _malloc = malloc;
-    _free = free;
-}
-
 #define panic(_msg_) { \
     fprintf(stderr, "panic: %s (%s:%d)\n", (_msg_), __FILE__, __LINE__); \
     exit(1); \
@@ -42,7 +29,7 @@ struct hashmap {
     size_t cap;
     uint64_t seed0;
     uint64_t seed1;
-    uint64_t (*hash)(const void *item, uint64_t seed0, uint64_t seed1);
+    uint64_t (*hash)(const void *item, uint64_t seed0, uint64_t seed1, void *udata);
     int (*compare)(const void *a, const void *b, void *udata);
     void (*elfree)(void *item);
     void *udata;
@@ -66,11 +53,26 @@ static void *bucket_item(struct bucket *entry) {
 }
 
 static uint64_t get_hash(struct hashmap *map, const void *key) {
-    return map->hash(key, map->seed0, map->seed1) << 16 >> 16;
+    return map->hash(key, map->seed0, map->seed1, map->udata) << 16 >> 16;
 }
 
 // hashmap_new_with_allocator returns a new hash map using a custom allocator.
-// See hashmap_new for more information information
+// Param `elsize` is the size of each element in the tree. Every element that
+// is inserted, deleted, or retrieved will be this size.
+// Param `cap` is the default lower capacity of the hashmap. Setting this to
+// zero will default to 16.
+// Params `seed0` and `seed1` are optional seed values that are passed to the 
+// following `hash` function. These can be any value you wish but it's often 
+// best to use randomly generated values.
+// Param `hash` is a function that generates a hash value for an item. It's
+// important that you provide a good hash function, otherwise it will perform
+// poorly or be vulnerable to Denial-of-service attacks. This implementation
+// comes with two helper functions `hashmap_sip()` and `hashmap_murmur()`.
+// Param `compare` is a function that compares items in the tree. See the 
+// qsort stdlib function for an example of how this function works.
+// The hashmap must be freed with hashmap_free(). 
+// Param `elfree` is a function that frees a specific item. This should be NULL
+// unless you're storing some kind of reference data in the hash.
 struct hashmap *hashmap_new_with_allocator(
                             void *(*_malloc)(size_t), 
                             void *(*_realloc)(void*, size_t), 
@@ -78,16 +80,17 @@ struct hashmap *hashmap_new_with_allocator(
                             size_t elsize, size_t cap, 
                             uint64_t seed0, uint64_t seed1,
                             uint64_t (*hash)(const void *item, 
-                                             uint64_t seed0, uint64_t seed1),
+                                             uint64_t seed0, uint64_t seed1, void *udata),
                             int (*compare)(const void *a, const void *b, 
                                            void *udata),
                             void (*elfree)(void *item),
                             void *udata)
 {
-    _malloc = _malloc ? _malloc : malloc;
-    _realloc = _realloc ? _realloc : realloc;
-    _free = _free ? _free : free;
-    int ncap = 16;
+    if (!_malloc || !_realloc || !_free)
+    {
+      return NULL;
+    }
+    size_t ncap = 16;
     if (cap < ncap) {
         cap = ncap;
     } else {
@@ -134,41 +137,6 @@ struct hashmap *hashmap_new_with_allocator(
     return map;  
 }
 
-
-// hashmap_new returns a new hash map. 
-// Param `elsize` is the size of each element in the tree. Every element that
-// is inserted, deleted, or retrieved will be this size.
-// Param `cap` is the default lower capacity of the hashmap. Setting this to
-// zero will default to 16.
-// Params `seed0` and `seed1` are optional seed values that are passed to the 
-// following `hash` function. These can be any value you wish but it's often 
-// best to use randomly generated values.
-// Param `hash` is a function that generates a hash value for an item. It's
-// important that you provide a good hash function, otherwise it will perform
-// poorly or be vulnerable to Denial-of-service attacks. This implementation
-// comes with two helper functions `hashmap_sip()` and `hashmap_murmur()`.
-// Param `compare` is a function that compares items in the tree. See the 
-// qsort stdlib function for an example of how this function works.
-// The hashmap must be freed with hashmap_free(). 
-// Param `elfree` is a function that frees a specific item. This should be NULL
-// unless you're storing some kind of reference data in the hash.
-struct hashmap *hashmap_new(size_t elsize, size_t cap, 
-                            uint64_t seed0, uint64_t seed1,
-                            uint64_t (*hash)(const void *item, 
-                                             uint64_t seed0, uint64_t seed1),
-                            int (*compare)(const void *a, const void *b, 
-                                           void *udata),
-                            void (*elfree)(void *item),
-                            void *udata)
-{
-    return hashmap_new_with_allocator(
-        (_malloc?_malloc:malloc),
-        (_realloc?_realloc:realloc),
-        (_free?_free:free),
-        elsize, cap, seed0, seed1, hash, compare, elfree, udata
-    );
-}
-
 static void free_elements(struct hashmap *map) {
     if (map->elfree) {
         for (size_t i = 0; i < map->nbuckets; i++) {
@@ -206,9 +174,10 @@ void hashmap_clear(struct hashmap *map, bool update_cap) {
 
 
 static bool resize(struct hashmap *map, size_t new_cap) {
-    struct hashmap *map2 = hashmap_new(map->elsize, new_cap, map->seed1, 
-                                       map->seed1, map->hash, map->compare,
-                                       map->elfree, map->udata);
+    struct hashmap *map2 = hashmap_new_with_allocator(map->malloc, map->realloc, map->free,
+                                                      map->elsize, new_cap, map->seed1,
+                                                      map->seed1, map->hash, map->compare,
+                                                      map->elfree, map->udata);
     if (!map2) {
         return false;
     }
@@ -570,6 +539,7 @@ uint64_t hashmap_sip(const void *data, size_t len,
 uint64_t hashmap_murmur(const void *data, size_t len, 
                         uint64_t seed0, uint64_t seed1)
 {
+    (void)seed1;
     char out[16];
     MM86128(data, len, seed0, &out);
     return *(uint64_t*)out;

@@ -11,14 +11,6 @@
 
 struct hashmap;
 
-struct hashmap *hashmap_new(size_t elsize, size_t cap, 
-                            uint64_t seed0, uint64_t seed1,
-                            uint64_t (*hash)(const void *item, 
-                                             uint64_t seed0, uint64_t seed1),
-                            int (*compare)(const void *a, const void *b, 
-                                           void *udata),
-                            void (*elfree)(void *item),
-                            void *udata);
 struct hashmap *hashmap_new_with_allocator(
                             void *(*malloc)(size_t), 
                             void *(*realloc)(void *, size_t), 
@@ -26,7 +18,7 @@ struct hashmap *hashmap_new_with_allocator(
                             size_t elsize, size_t cap, 
                             uint64_t seed0, uint64_t seed1,
                             uint64_t (*hash)(const void *item, 
-                                             uint64_t seed0, uint64_t seed1),
+                                             uint64_t seed0, uint64_t seed1, void *udata),
                             int (*compare)(const void *a, const void *b, 
                                            void *udata),
                             void (*elfree)(void *item),
@@ -46,9 +38,5 @@ uint64_t hashmap_sip(const void *data, size_t len,
                      uint64_t seed0, uint64_t seed1);
 uint64_t hashmap_murmur(const void *data, size_t len, 
                         uint64_t seed0, uint64_t seed1);
-
-
-// DEPRECATED: use `hashmap_new_with_allocator`
-void hashmap_set_allocator(void *(*malloc)(size_t), void (*free)(void*));
 
 #endif
