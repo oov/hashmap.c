@@ -298,7 +298,7 @@ void *hashmap_probe(struct hashmap *map, uint64_t position) {
 
 // hashmap_delete removes an item from the hash map and returns it. If the
 // item is not found then NULL is returned.
-void *hashmap_delete(struct hashmap *map, void *key) {
+void *hashmap_delete(struct hashmap *map, const void *key) {
     if (!key) {
         panic("key is null");
     }
