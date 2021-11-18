@@ -357,6 +357,11 @@ bool hashmap_oom(struct hashmap *map) {
     return map->oom;
 }
 
+// hashmap_udata returns udata passed in hashmap_new_with_allocator.
+void *hashmap_udata(struct hashmap *map) {
+    return map->udata;
+}
+
 // hashmap_scan iterates over all items in the hash map
 // Param `iter` can return false to stop iteration early.
 // Returns false if the iteration has been stopped early.
