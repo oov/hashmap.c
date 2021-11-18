@@ -362,6 +362,13 @@ void *hashmap_udata(struct hashmap *map) {
     return map->udata;
 }
 
+// hashmap_set_udata updates udata and returns old one.
+void *hashmap_set_udata(struct hashmap *map, void *udata) {
+    void *old = map->udata;
+    map->udata = udata;
+    return old;
+}
+
 // hashmap_scan iterates over all items in the hash map
 // Param `iter` can return false to stop iteration early.
 // Returns false if the iteration has been stopped early.
