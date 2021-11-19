@@ -7,12 +7,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <assert.h>
 #include "hashmap.h"
-
-#define panic(_msg_) { \
-    fprintf(stderr, "panic: %s (%s:%d)\n", (_msg_), __FILE__, __LINE__); \
-    exit(1); \
-}
 
 struct bucket {
     uint64_t hash:48;
@@ -215,9 +211,7 @@ static bool resize(struct hashmap *map, size_t new_cap) {
 // may allocate memory. If the system is unable to allocate additional
 // memory then NULL is returned and hashmap_oom() returns true.
 void *hashmap_set(struct hashmap *map, void *item) {
-    if (!item) {
-        panic("item is null");
-    }
+    assert(item != NULL);
     map->oom = false;
     if (map->count == map->growat) {
         if (!resize(map, map->nbuckets*2)) {
@@ -261,9 +255,7 @@ void *hashmap_set(struct hashmap *map, void *item) {
 // hashmap_get returns the item based on the provided key. If the item is not
 // found then NULL is returned.
 void *hashmap_get(struct hashmap *map, const void *key) {
-    if (!key) {
-        panic("key is null");
-    }
+    assert(key != NULL);
     uint64_t hash = get_hash(map, key);
 	size_t i = hash & map->mask;
 	for (;;) {
@@ -296,9 +288,7 @@ void *hashmap_probe(struct hashmap *map, uint64_t position) {
 // hashmap_delete removes an item from the hash map and returns it. If the
 // item is not found then NULL is returned.
 void *hashmap_delete(struct hashmap *map, const void *key) {
-    if (!key) {
-        panic("key is null");
-    }
+    assert(key != NULL);
     map->oom = false;
     uint64_t hash = get_hash(map, key);
 	size_t i = hash & map->mask;
