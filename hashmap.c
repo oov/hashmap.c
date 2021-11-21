@@ -2,13 +2,9 @@
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file.
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <stddef.h>
-#include <assert.h>
 #include "hashmap.h"
+#include <string.h>
+#include <assert.h>
 
 struct bucket {
     uint64_t hash:48;
@@ -435,12 +431,12 @@ static uint64_t SIP64(const uint8_t *in, const size_t inlen,
     const int left = inlen & 7;
     uint64_t b = ((uint64_t)inlen) << 56;
     switch (left) {
-    case 7: b |= ((uint64_t)in[6]) << 48;
-    case 6: b |= ((uint64_t)in[5]) << 40;
-    case 5: b |= ((uint64_t)in[4]) << 32;
-    case 4: b |= ((uint64_t)in[3]) << 24;
-    case 3: b |= ((uint64_t)in[2]) << 16;
-    case 2: b |= ((uint64_t)in[1]) << 8;
+    case 7: b |= ((uint64_t)in[6]) << 48; /* FALLTHRU */
+    case 6: b |= ((uint64_t)in[5]) << 40; /* FALLTHRU */
+    case 5: b |= ((uint64_t)in[4]) << 32; /* FALLTHRU */
+    case 4: b |= ((uint64_t)in[3]) << 24; /* FALLTHRU */
+    case 3: b |= ((uint64_t)in[2]) << 16; /* FALLTHRU */
+    case 2: b |= ((uint64_t)in[1]) << 8;  /* FALLTHRU */
     case 1: b |= ((uint64_t)in[0]); break;
     case 0: break;
     }
@@ -495,23 +491,23 @@ static void MM86128(const void *key, const int len, uint32_t seed, void *out) {
     uint32_t k3 = 0;
     uint32_t k4 = 0;
     switch(len & 15) {
-    case 15: k4 ^= tail[14] << 16;
-    case 14: k4 ^= tail[13] << 8;
+    case 15: k4 ^= tail[14] << 16; /* FALLTHRU */
+    case 14: k4 ^= tail[13] << 8;  /* FALLTHRU */
     case 13: k4 ^= tail[12] << 0;
-             k4 *= c4; k4  = ROTL32(k4,18); k4 *= c1; h4 ^= k4;
-    case 12: k3 ^= tail[11] << 24;
-    case 11: k3 ^= tail[10] << 16;
-    case 10: k3 ^= tail[ 9] << 8;
+             k4 *= c4; k4  = ROTL32(k4,18); k4 *= c1; h4 ^= k4; /* FALLTHRU */
+    case 12: k3 ^= tail[11] << 24; /* FALLTHRU */
+    case 11: k3 ^= tail[10] << 16; /* FALLTHRU */
+    case 10: k3 ^= tail[ 9] << 8; /* FALLTHRU */
     case  9: k3 ^= tail[ 8] << 0;
-             k3 *= c3; k3  = ROTL32(k3,17); k3 *= c4; h3 ^= k3;
-    case  8: k2 ^= tail[ 7] << 24;
-    case  7: k2 ^= tail[ 6] << 16;
-    case  6: k2 ^= tail[ 5] << 8;
+             k3 *= c3; k3  = ROTL32(k3,17); k3 *= c4; h3 ^= k3; /* FALLTHRU */
+    case  8: k2 ^= tail[ 7] << 24; /* FALLTHRU */
+    case  7: k2 ^= tail[ 6] << 16; /* FALLTHRU */
+    case  6: k2 ^= tail[ 5] << 8; /* FALLTHRU */
     case  5: k2 ^= tail[ 4] << 0;
-             k2 *= c2; k2  = ROTL32(k2,16); k2 *= c3; h2 ^= k2;
-    case  4: k1 ^= tail[ 3] << 24;
-    case  3: k1 ^= tail[ 2] << 16;
-    case  2: k1 ^= tail[ 1] << 8;
+             k2 *= c2; k2  = ROTL32(k2,16); k2 *= c3; h2 ^= k2; /* FALLTHRU */
+    case  4: k1 ^= tail[ 3] << 24; /* FALLTHRU */
+    case  3: k1 ^= tail[ 2] << 16; /* FALLTHRU */
+    case  2: k1 ^= tail[ 1] << 8; /* FALLTHRU */
     case  1: k1 ^= tail[ 0] << 0;
              k1 *= c1; k1  = ROTL32(k1,15); k1 *= c2; h1 ^= k1;
     };
