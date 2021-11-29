@@ -29,7 +29,7 @@ bool hashmap_oom(struct hashmap *map);
 void *hashmap_udata(struct hashmap *map);
 void *hashmap_set_udata(struct hashmap *map, void *udata);
 void *hashmap_get(struct hashmap *map, const void *item);
-void *hashmap_set(struct hashmap *map, void *item);
+void *hashmap_set(struct hashmap *map, const void *item);
 void *hashmap_delete(struct hashmap *map, const void *item);
 void *hashmap_probe(struct hashmap *map, uint64_t position);
 bool hashmap_scan(struct hashmap *map,
