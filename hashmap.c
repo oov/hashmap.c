@@ -527,7 +527,7 @@ static void MM86128(const void *key, const int len, uint32_t seed, void *out) {
 uint64_t hashmap_sip(const void *data, size_t len, 
                      uint64_t seed0, uint64_t seed1)
 {
-    return SIP64((uint8_t*)data, len, seed0, seed1);
+    return SIP64((uint8_t const*)data, len, seed0, seed1);
 }
 
 // hashmap_murmur returns a hash value for `data` using Murmur3_86_128.
@@ -536,7 +536,7 @@ uint64_t hashmap_murmur(const void *data, size_t len,
 {
     (void)seed1;
     char out[16];
-    MM86128(data, len, seed0, &out);
+    MM86128(data, len, (uint32_t)seed0, &out);
     return *(uint64_t*)out;
 }
 
