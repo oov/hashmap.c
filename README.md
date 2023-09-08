@@ -68,8 +68,16 @@ int main() {
     user = hashmap_get(map, &(struct user){ .name="Tom" });
     printf("%s\n", user?"exists":"not exists");
 
-    printf("\n-- iterate over all users --\n");
+    printf("\n-- iterate over all users (hashmap_scan) --\n");
     hashmap_scan(map, user_iter, NULL);
+
+    printf("\n-- iterate over all users (hashmap_iter) --\n");
+    size_t iter = 0;
+    void *item;
+    while (hashmap_iter(map, &iter, &item)) {
+        const struct user *user = item;
+        printf("%s (age=%d)\n", user->name, user->age);
+    }
 
     hashmap_free(map);
 }
@@ -81,10 +89,16 @@ int main() {
 // Dale age=44
 // not exists
 // 
-// -- iterate over all users --
+// -- iterate over all users (hashmap_scan) --
 // Dale (age=44)
 // Roger (age=68)
 // Jane (age=47)
+//
+// -- iterate over all users (hashmap_iter) --
+// Dale (age=44)
+// Roger (age=68)
+// Jane (age=47)
+
 ```
 
 ## Functions
@@ -104,7 +118,8 @@ hashmap_clear    # clear the hash map
 ### Iteration
 
 ```sh
-hashmap_scan     # iterate over items in hash map
+hashmap_iter     # loop based iteration over all items in hash map 
+hashmap_scan     # callback based iteration over all items in hash map
 ```
 
 ### Hash helpers
