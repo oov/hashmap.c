@@ -4,6 +4,8 @@
 
 #include "hashmap.h"
 
+#include <string.h>
+
 struct bucket {
     uint64_t hash:48;
     uint64_t dib:16;
@@ -11,7 +13,6 @@ struct bucket {
 
 // hashmap is an open addressed hash map using robinhood hashing.
 struct hashmap {
-    void *(*malloc)(size_t, void *udata);
     void *(*realloc)(void *, size_t, void *udata);
     void (*free)(void *, void *udata);
     size_t elsize;
@@ -76,15 +77,15 @@ static uint64_t get_hash(struct hashmap *map, const void *key) {
 // The hashmap must be freed with hashmap_free(). 
 // Param `elfree` is a function that frees a specific item. This should be NULL
 // unless you're storing some kind of reference data in the hash.
-struct hashmap *hashmap_new_with_allocator(void *(*_malloc)(size_t, void *udata), 
-    void *(*_realloc)(void*, size_t, void *udata), void (*_free)(void*, void *udata),
+struct hashmap *hashmap_new_with_allocator(void *(*_realloc)(void*, size_t, void *udata),
+    void (*_free)(void*, void *udata),
     size_t elsize, size_t cap, uint64_t seed0, uint64_t seed1,
     uint64_t (*hash)(const void *item, uint64_t seed0, uint64_t seed1, void *udata),
     int (*compare)(const void *a, const void *b, void *udata),
     void (*elfree)(void *item, void *udata),
     void *udata)
 {
-    if (!_malloc ||!_realloc || !_free)
+    if (!_realloc ||!_free)
     {
       return NULL;
     }
@@ -103,7 +104,7 @@ struct hashmap *hashmap_new_with_allocator(void *(*_malloc)(size_t, void *udata)
     }
     // hashmap + spare + edata
     size_t size = sizeof(struct hashmap)+bucketsz*2;
-    struct hashmap *map = _malloc(size, udata);
+    struct hashmap *map = _realloc(NULL, size, udata);
     if (!map) {
         return NULL;
     }
@@ -121,7 +122,7 @@ struct hashmap *hashmap_new_with_allocator(void *(*_malloc)(size_t, void *udata)
     map->cap = cap;
     map->nbuckets = cap;
     map->mask = map->nbuckets-1;
-    map->buckets = _malloc(map->bucketsz*map->nbuckets, udata);
+    map->buckets = _realloc(NULL, map->bucketsz*map->nbuckets, udata);
     if (!map->buckets) {
         _free(map, udata);
         return NULL;
@@ -130,7 +131,6 @@ struct hashmap *hashmap_new_with_allocator(void *(*_malloc)(size_t, void *udata)
     map->growpower = 1;
     map->growat = map->nbuckets*3/5;
     map->shrinkat = map->nbuckets/10;
-    map->malloc = _malloc;
     map->realloc = _realloc;
     map->free = _free;
     return map;  
@@ -157,7 +157,7 @@ void hashmap_clear(struct hashmap *map, bool update_cap) {
     if (update_cap) {
         map->cap = map->nbuckets;
     } else if (map->nbuckets != map->cap) {
-        void *new_buckets = map->malloc(map->bucketsz*map->cap, map->udata);
+        void *new_buckets = map->realloc(NULL, map->bucketsz*map->cap, map->udata);
         if (new_buckets) {
             map->free(map->buckets, map->udata);
             map->buckets = new_buckets;
@@ -171,7 +171,7 @@ void hashmap_clear(struct hashmap *map, bool update_cap) {
 }
 
 static bool resize0(struct hashmap *map, size_t new_cap) {
-    struct hashmap *map2 = hashmap_new_with_allocator(map->malloc, map->realloc, 
+    struct hashmap *map2 = hashmap_new_with_allocator(map->realloc,
         map->free, map->elsize, new_cap, map->seed0, map->seed1, map->hash, 
         map->compare, map->elfree, map->udata);
     if (!map2) return false;
