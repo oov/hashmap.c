@@ -2,8 +2,7 @@
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file.
 
-#ifndef HASHMAP_H
-#define HASHMAP_H
+#pragma once
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -41,9 +40,3 @@ const void *hashmap_delete_with_hash(struct hashmap *map, const void *key, uint6
 const void *hashmap_set_with_hash(struct hashmap *map, const void *item, uint64_t hash);
 void hashmap_set_grow_by_power(struct hashmap *map, size_t power);
 
-uint64_t hashmap_sip(const void *data, size_t len, 
-                     uint64_t seed0, uint64_t seed1);
-uint64_t hashmap_murmur(const void *data, size_t len, 
-                        uint64_t seed0, uint64_t seed1);
-
-#endif
