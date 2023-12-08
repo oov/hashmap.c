@@ -35,6 +35,7 @@ uint64_t hashmap_sip(const void *data, size_t len, uint64_t seed0, uint64_t seed
 uint64_t hashmap_murmur(const void *data, size_t len, uint64_t seed0, uint64_t seed1);
 uint64_t hashmap_xxhash3(const void *data, size_t len, uint64_t seed0, uint64_t seed1);
 
+uint64_t hashmap_hash(struct hashmap *map, const void *key);
 const void *hashmap_get_with_hash(struct hashmap *map, const void *key, uint64_t hash);
 const void *hashmap_delete_with_hash(struct hashmap *map, const void *key, uint64_t hash);
 const void *hashmap_set_with_hash(struct hashmap *map, const void *item, uint64_t hash);

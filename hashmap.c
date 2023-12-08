@@ -60,6 +60,11 @@ static uint64_t get_hash(struct hashmap *map, const void *key) {
     return clip_hash(map->hash(key, map->seed0, map->seed1, map->udata));
 }
 
+// hashmap_hash returns the hash value for a key.
+uint64_t hashmap_hash(struct hashmap *map, const void *key) {
+    return get_hash(map, key);
+}
+
 // hashmap_new_with_allocator returns a new hash map using a custom allocator.
 // Param `elsize` is the size of each element in the tree. Every element that
 // is inserted, deleted, or retrieved will be this size.
