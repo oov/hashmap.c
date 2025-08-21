@@ -5,6 +5,12 @@
 #include "hashmap.h"
 
 #include <string.h>
+#define GROW_AT   0.60 /* 60% */
+#define SHRINK_AT 0.10 /* 10% */
+
+#ifndef HASHMAP_LOAD_FACTOR
+#define HASHMAP_LOAD_FACTOR GROW_AT
+#endif
 
 struct bucket {
     uint64_t hash:48;
@@ -29,6 +35,7 @@ struct hashmap {
     size_t mask;
     size_t growat;
     size_t shrinkat;
+    uint8_t loadfactor;
     uint8_t growpower;
     bool oom;
     void *buckets;
@@ -40,11 +47,25 @@ void hashmap_set_grow_by_power(struct hashmap *map, size_t power) {
     map->growpower = (uint8_t)(power < 1 ? 1 : power > 16 ? 16 : power);
 }
 
+static double clamp_load_factor(double factor, double default_factor) {
+    // Check for NaN and clamp between 50% and 90%
+    return factor != factor ? default_factor : 
+           factor < 0.50 ? 0.50 : 
+           factor > 0.95 ? 0.95 : 
+           factor;
+}
+
+void hashmap_set_load_factor(struct hashmap *map, double factor) {
+    factor = clamp_load_factor(factor, map->loadfactor / 100.0);
+    map->loadfactor = factor * 100;
+    map->growat = map->nbuckets * (map->loadfactor / 100.0);
+}
+
 static struct bucket *bucket_at0(void *buckets, size_t bucketsz, size_t i) {
     return (struct bucket*)(((char*)buckets)+(bucketsz*i));
 }
 
-static struct bucket *bucket_at(struct hashmap *map, size_t index) {
+static struct bucket *bucket_at(const struct hashmap *map, size_t index) {
     return bucket_at0(map->buckets, map->bucketsz, index);
 }
 
@@ -56,7 +77,7 @@ static uint64_t clip_hash(uint64_t hash) {
     return hash & 0xFFFFFFFFFFFF;
 }
 
-static uint64_t get_hash(struct hashmap *map, const void *key) {
+static uint64_t get_hash(const struct hashmap *map, const void *key) {
     return clip_hash(map->hash(key, map->seed0, map->seed1, map->udata));
 }
 
@@ -64,6 +85,7 @@ static uint64_t get_hash(struct hashmap *map, const void *key) {
 uint64_t hashmap_hash(struct hashmap *map, const void *key) {
     return get_hash(map, key);
 }
+
 
 // hashmap_new_with_allocator returns a new hash map using a custom allocator.
 // Param `elsize` is the size of each element in the tree. Every element that
@@ -134,8 +156,9 @@ struct hashmap *hashmap_new_with_allocator(void *(*_realloc)(void*, size_t, void
     }
     memset(map->buckets, 0, map->bucketsz*map->nbuckets);
     map->growpower = 1;
-    map->growat = map->nbuckets*3/5;
-    map->shrinkat = map->nbuckets/10;
+    map->loadfactor = clamp_load_factor(HASHMAP_LOAD_FACTOR, GROW_AT) * 100;
+    map->growat = map->nbuckets * (map->loadfactor / 100.0);
+    map->shrinkat = map->nbuckets * SHRINK_AT;
     map->realloc = _realloc;
     map->free = _free;
     return map;  
@@ -171,8 +194,8 @@ void hashmap_clear(struct hashmap *map, bool update_cap) {
     }
     memset(map->buckets, 0, map->bucketsz*map->nbuckets);
     map->mask = map->nbuckets-1;
-    map->growat = map->nbuckets*3/4;
-    map->shrinkat = map->nbuckets/10;
+    map->growat = map->nbuckets * (map->loadfactor / 100.0) ;
+    map->shrinkat = map->nbuckets * SHRINK_AT;
 }
 
 static bool resize0(struct hashmap *map, size_t new_cap) {
@@ -224,7 +247,7 @@ const void *hashmap_set_with_hash(struct hashmap *map, const void *item,
 {
     hash = clip_hash(hash);
     map->oom = false;
-    if (map->count == map->growat) {
+    if (map->count >= map->growat) {
         if (!resize(map, map->nbuckets*(1<<map->growpower))) {
             map->oom = true;
             return NULL;
@@ -276,7 +299,7 @@ const void *hashmap_set(struct hashmap *map, const void *item) {
 // hashmap_get_with_hash works like hashmap_get but you provide your
 // own hash. The 'hash' callback provided to the hashmap_new function
 // will not be called
-const void *hashmap_get_with_hash(struct hashmap *map, const void *key, 
+const void *hashmap_get_with_hash(const struct hashmap *map, const void *key,
     uint64_t hash)
 {
     hash = clip_hash(hash);
@@ -296,7 +319,7 @@ const void *hashmap_get_with_hash(struct hashmap *map, const void *key,
 
 // hashmap_get returns the item based on the provided key. If the item is not
 // found then NULL is returned.
-const void *hashmap_get(struct hashmap *map, const void *key) {
+const void *hashmap_get(const struct hashmap *map, const void *key) {
     return hashmap_get_with_hash(map, key, get_hash(map, key));
 }
 
@@ -363,7 +386,7 @@ const void *hashmap_delete(struct hashmap *map, const void *key) {
 }
 
 // hashmap_count returns the number of items in the hash map.
-size_t hashmap_count(struct hashmap *map) {
+size_t hashmap_count(const struct hashmap *map) {
     return map->count;
 }
 

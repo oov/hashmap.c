@@ -8,6 +8,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#if defined(__cplusplus)
+extern "C" {
+#endif  // __cplusplus
+
 struct hashmap;
 
 struct hashmap *hashmap_new_with_allocator(void *(*realloc)(void*, size_t, void *udata),
@@ -20,11 +24,11 @@ struct hashmap *hashmap_new_with_allocator(void *(*realloc)(void*, size_t, void 
 
 void hashmap_free(struct hashmap *map);
 void hashmap_clear(struct hashmap *map, bool update_cap);
-size_t hashmap_count(struct hashmap *map);
+size_t hashmap_count(const struct hashmap *map);
 bool hashmap_oom(struct hashmap *map);
 void *hashmap_udata(struct hashmap *map);
 void *hashmap_set_udata(struct hashmap *map, void *udata);
-const void *hashmap_get(struct hashmap *map, const void *item);
+const void *hashmap_get(const struct hashmap *map, const void *item);
 const void *hashmap_set(struct hashmap *map, const void *item);
 const void *hashmap_delete(struct hashmap *map, const void *item);
 const void *hashmap_probe(struct hashmap *map, uint64_t position);
@@ -36,8 +40,12 @@ uint64_t hashmap_murmur(const void *data, size_t len, uint64_t seed0, uint64_t s
 uint64_t hashmap_xxhash3(const void *data, size_t len, uint64_t seed0, uint64_t seed1);
 
 uint64_t hashmap_hash(struct hashmap *map, const void *key);
-const void *hashmap_get_with_hash(struct hashmap *map, const void *key, uint64_t hash);
+const void *hashmap_get_with_hash(const struct hashmap *map, const void *key, uint64_t hash);
 const void *hashmap_delete_with_hash(struct hashmap *map, const void *key, uint64_t hash);
 const void *hashmap_set_with_hash(struct hashmap *map, const void *item, uint64_t hash);
 void hashmap_set_grow_by_power(struct hashmap *map, size_t power);
+void hashmap_set_load_factor(struct hashmap *map, double load_factor);
 
+#if defined(__cplusplus)
+}
+#endif  // __cplusplus
